@@ -1,2 +1,2 @@
 filter = '&fq=scope:knb-lter-knz'
-limit = 20
+limit = 50
