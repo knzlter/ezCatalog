@@ -199,6 +199,8 @@ function downloadCsv(count) {
       var docs = xmlDoc.getElementsByTagName("document");
       for (var i = 0; i < docs.length; i++) {
          var doc = docs[i];
+         var beginDate = doc.getElementsByTagName("beginDate");
+         console.log(beginDate);
          var authorNodes = doc.getElementsByTagName("author");
          var authors = [];
          for (var authorIndex = 0; authorIndex < authorNodes.length; authorIndex++) {
