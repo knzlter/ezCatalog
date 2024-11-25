@@ -194,6 +194,7 @@ function downloadCsv(count) {
    var baseUri = QUERY_URL + "&rows=" + limit + "&start="
 
    function addChunk(headers, response) {
+      console.log("test");
       var parser = new DOMParser();
       var xmlDoc = parser.parseFromString(response, "text/xml");
       var docs = xmlDoc.getElementsByTagName("document");
