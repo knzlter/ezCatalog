@@ -31,52 +31,28 @@ function getParameterByName(name, url) {
 }
 
 // Parse citation dictionary into HTML
-function buildHtml(citations, abstracts) {
+function buildHtml(citations) {
    var html = [];
    var citationCount = Object.keys(citations).length;
 
-   // Start table structure
-   html.push('<table border="1">');
-   html.push('<thead><tr><th>Title</th><th>Authors</th><th>Date</th></tr></thead>');
-   html.push('<tbody>');
-
    for (var i = 0; i < citationCount; i++) {
-       var citation = citations[i];
-       var abstract = abstracts[i];
-
-       // Truncate abstract if necessary
-       if (abstract.length > PASTA_CONFIG["abstractLimit"]) {
-           abstract = abstract.substring(0, PASTA_CONFIG["abstractLimit"]) + "...";
-       }
-
-       var authors = citation["authors"];
-       var date = (citation["pub_year"]) ? "Published " + citation["pub_year"] : "";
-
-       // Construct DOI or link
-       var link = (citation["doi"]) ? citation["doi"].slice(0, -1) : "https://portal.edirepository.org/nis/mapbrowse?packageid=" + citation["pid"];
-       var title = '<a rel="external noopener" href="' + link + '" target="_blank" aria-label="open data in new tab">' + citation["title"] + '</a>';
-
-       // Build the row for the table
-       var row = '<tr>';
-       row += '<td>' + title + '</td>';
-       row += '<td>' + authors + '</td>';
-       row += '<td>' + date + '</td>';
-       row += '</tr>';
-
-       html.push(row);
+      var citation = citations[i];
+      var authors = citation["authors"];
+      var date = (citation["pub_year"]) ? " Published " + citation["pub_year"] + "" : "";
+      // default ESIP formatting has trailing period after DOI
+      var link = (citation["doi"]) ? citation["doi"].slice(0, -1) : "https://portal.edirepository.org/nis/mapbrowse?packageid=" + citation["pid"];
+      var title = '<a rel="external noopener" href="' + link + '" target="_blank" aria-label="open data in new tab">' + citation["title"] + '</a>';
+      var row = '<p><span class="dataset-title">' + title +
+         '</span><br><span class="dataset-author">' + authors + date +
+         '</span></p>';
+      html.push(row);
    }
-
-   // Close table body and table tags
-   html.push('</tbody></table>');
-
-   // If citations exist, return the generated HTML; otherwise, return a no-results message
    if (citationCount) {
-       return html.join("\n");
+      return html.join("\n");
    } else {
-       return "<p>Your search returned no results.</p>";
+      return "<p>Your search returned no results.</p>";
    }
 }
-
 
 // Download citations to a dictionary keyed by package ID
 function getCitations(packageIds) {
