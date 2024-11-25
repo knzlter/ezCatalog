@@ -34,10 +34,10 @@ function getParameterByName(name, url) {
 function buildHtml(citations) {
    var html = [];
    var citationCount = Object.keys(citations).length;
-
+   console.log(citations);
    // Start table structure
    html.push('<table border="1">');
-   html.push('<thead><tr><th>Title</th><th>Authors</th><th>Date</th></tr></thead>');
+   html.push('<thead><tr><th>Title</th><th>Authors</th><th>Date Range</th></tr></thead>');
    html.push('<tbody>');
 
    for (var i = 0; i < citationCount; i++) {
@@ -69,7 +69,6 @@ function buildHtml(citations) {
        return "<p>Your search returned no results.</p>";
    }
 }
-
 
 // Download citations to a dictionary keyed by package ID
 function getCitations(packageIds) {
