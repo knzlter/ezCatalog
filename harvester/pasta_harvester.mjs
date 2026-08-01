@@ -7,7 +7,7 @@ import fetch from 'node-fetch';
 import parser from 'xml2js';
 
 const PASTA_CONFIG = {
-   "server": "https://pasta.lternet.edu/package/search/eml?key=K-3BEouXuiwS84CD93QC_e4-0yc", // PASTA server add apiKey
+   "server": "https://pasta.lternet.edu/package/search/eml?", // PASTA server
    "filter": '&fq=scope:"knb-lter-knz"', // Filter results on a unique keyword of a research group
    "limit": 2000, // Max number of results to retrieve per page
    "fields": [
