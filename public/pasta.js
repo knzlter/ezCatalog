@@ -15,7 +15,7 @@ var PASTA_CONFIG = {
    "pagesBotElementId": "paginationBot", // Element to display result page links below results
    "showPages": 5, // MUST BE ODD NUMBER! Max number of page links to show
    "sortDiv": "sortDiv", // Element with interactive sort options
-   "useCiteService": true // true if we should use EDI Cite service to build citations instead of building from PASTA results
+   "useCiteService": true, // true if we should use EDI Cite service to build citations instead of building from PASTA results
    "UseDoiLinks": true, // true if we should use DOI links for datasets that have a DOI, false to use PASTA landing page links
    "includeApiKeyInResultLinks": false // Only used when UseDoiLinks is false. If true, dataset links are rendered as buttons whose Base64-obfuscated URL (including the access key) is decoded on click, instead of plain landing-page lin
 };
