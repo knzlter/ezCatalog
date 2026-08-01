@@ -7,7 +7,8 @@ import fetch from 'node-fetch';
 import parser from 'xml2js';
 
 const PASTA_CONFIG = {
-   "server": "https://pasta.lternet.edu/package/search/eml?", // PASTA server
+   "server":  "https://pasta.lternet.edu/package/search/eml?key=", // PASTA search endpoint; the access key is appended directly after "key="
+   "base64EdiApiAccessKey": "Sy0zQkVvdVh1aXdTODRDRDkzUUNfZTQtMHlj", // EDI/PASTA API access key, encoded as Base64
    "filter": '&fq=scope:"knb-lter-knz"', // Filter results on a unique keyword of a research group
    "limit": 2000, // Max number of results to retrieve per page
    "fields": [
@@ -17,6 +18,18 @@ const PASTA_CONFIG = {
 };
 
 const OUT_FILE = "./public/pasta_lookup.js";
+
+// Decodes PASTA_CONFIG["base64EdiApiAccessKey"] back into the real API key
+function getApiKey() {
+   var encoded = PASTA_CONFIG["base64EdiApiAccessKey"];
+   if (!encoded) return "";
+   try {
+      return Buffer.from(encoded, "base64").toString("utf8");
+   } catch (error) {
+      console.error("base64EdiApiAccessKey is not valid Base64.", error);
+      return "";
+   }
+}
 
 
 function parseTaxa(doc) {
@@ -103,10 +116,11 @@ function getUnique(array) {
 
 function makeBaseUri() {
    const base = PASTA_CONFIG["server"];
+   const key = encodeURIComponent(getApiKey());
    const fields = PASTA_CONFIG["fields"].toString();
    const params = "fl=" + fields + "&defType=edismax&q=*" + encodeURI(PASTA_CONFIG["filter"]);
    const limit = "&rows=" + PASTA_CONFIG["limit"];
-   return base + params + limit;
+   returnreturn base + key + "&" + params + limit;
 }
 
 
