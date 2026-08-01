@@ -3,7 +3,8 @@
 "use strict";
 
 var PASTA_CONFIG = {
-   "server": "https://pasta.lternet.edu/package/search/eml?", // PASTA server
+   "server":  "https://pasta.lternet.edu/package/search/eml?key=", // PASTA search endpoint; the access key is appended directly after "key="
+   "base64EdiApiAccessKey": "Sy0zQkVvdVh1aXdTODRDRDkzUUNfZTQtMHlj", //  EDI/PASTA API access key, encoded as Base64. See https://ble-lter.github.io/Base64-Converter/ for how to convert your key.
    "filter": '&fq=scope:"knb-lter-knz"', // Filter results on a unique keyword of a research group
    "limit": 50, // Max number of results to retrieve per page
    "resultsElementId": "searchResults", // Element to contain results
@@ -15,7 +16,21 @@ var PASTA_CONFIG = {
    "showPages": 5, // MUST BE ODD NUMBER! Max number of page links to show
    "sortDiv": "sortDiv", // Element with interactive sort options
    "useCiteService": true // true if we should use EDI Cite service to build citations instead of building from PASTA results
+   "UseDoiLinks": true, // true if we should use DOI links for datasets that have a DOI, false to use PASTA landing page links
+   "includeApiKeyInResultLinks": false // Only used when UseDoiLinks is false. If true, dataset links are rendered as buttons whose Base64-obfuscated URL (including the access key) is decoded on click, instead of plain landing-page lin
 };
+
+// Decodes PASTA_CONFIG["base64EdiApiAccessKey"] back into the real API key
+function getApiKey() {
+   var encoded = PASTA_CONFIG["base64EdiApiAccessKey"];
+   if (!encoded) return "";
+   try {
+      return atob(encoded);
+   } catch (error) {
+      console.error("base64EdiApiAccessKey is not valid Base64.", error);
+      return "";
+   }
+}
 
 var QUERY_URL = ""; // Query URL without row limit or start parameter
 
@@ -30,10 +45,49 @@ function getParameterByName(name, url) {
    return decodeURIComponent(results[2].replace(/\+/g, " ")).trim();
 }
 
+/*
+ * Builds the HTML for a dataset link. If UseDoiLinks is true and a DOI is
+ * available, a normal DOI link is used. Otherwise, the PASTA landing page
+ * link is used; if includeApiKeyInResultLinks is also true, the landing
+ * page link (with the API key attached) is rendered as a button whose
+ * Base64-obfuscated URL is only decoded when the user clicks it, per
+ * https://edirepository.org/resources/obsfucate
+ */
+function makeDatasetLinkHtml(portalLink, doiLink, displayText) {
+   if (PASTA_CONFIG["UseDoiLinks"] && doiLink) {
+      return '<a rel="external noopener" href="' + doiLink + '" target="_blank" aria-label="open data in new tab">' + displayText + '</a>';
+   }
+   if (!PASTA_CONFIG["UseDoiLinks"] && PASTA_CONFIG["includeApiKeyInResultLinks"]) {
+      return makeObfuscatedLinkButtonHtml(portalLink, displayText);
+   }
+   return '<a rel="external noopener" href="' + portalLink + '" target="_blank" aria-label="open data in new tab">' + displayText + '</a>';
+}
+// Builds a button with a Base64-obfuscated URL (including the API key) that is decoded only on click
+function makeObfuscatedLinkButtonHtml(link, displayText) {
+   var apiKey = getApiKey();
+   var fullUrl = link + (link.indexOf("?") > -1 ? "&" : "?") + "key=" + encodeURIComponent(apiKey);
+   var encodedUrl = btoa(fullUrl);
+   return '<button type="button" class="dataset-link-button" data-url="' + encodedUrl +
+      '" onclick="openObfuscatedDatasetLink(this)" aria-label="open data in new tab">' + displayText + '</button>';
+}
+// Decodes a button's obfuscated URL and opens it, per https://edirepository.org/resources/obsfucate
+function openObfuscatedDatasetLink(button) {
+   var encodedUrl = button.getAttribute("data-url");
+   try {
+      var url = atob(encodedUrl);
+      window.open(url, "_blank", "noopener");
+   } catch (error) {
+      console.error("Failed to decode dataset URL:", error);
+      alert("There was an error opening the dataset link.");
+   }
+}
+
+
 // Parse citation dictionary into HTML
 function buildHtml(citations) {
    var html = [];
    var citationCount = Object.keys(citations).length;
+   var portal_base = "https://portal.edirepository.org/nis/mapbrowse?packageid=";
    console.log(citations);
    // Start table structure
    html.push('<table border="1">');
@@ -45,6 +99,11 @@ function buildHtml(citations) {
        var authors = citation["authors"];
        var date = (citation["pub_year"]) ? "Published " + citation["pub_year"] : "";
 
+      // default ESIP formatting has trailing period after DOI
+      var doiLink = citation["doi"] ? citation["doi"].slice(0, -1) : "";
+      var portalLink = portal_base + citation["pid"];
+      var title = makeDatasetLinkHtml(portalLink, doiLink, citation["title"]);
+      
        // Construct DOI or link
        var link = (citation["doi"]) ? citation["doi"].slice(0, -1) : "https://portal.edirepository.org/nis/mapbrowse?packageid=" + citation["pid"];
        var title = '<a rel="external noopener" href="' + link + '" target="_blank" aria-label="open data in new tab">' + citation["title"] + '</a>';
@@ -121,6 +180,7 @@ function buildCitationsFromCite(pastaDocs) {
 // Build dataset citations from PASTA XML
 function buildCitationsFromPasta(pastaDocs) {
    var html = [];
+   var portal_base = "https://portal.edirepository.org/nis/mapbrowse?packageid=";
    for (var i = 0; i < pastaDocs.length; i++) {
       var doc = pastaDocs[i];
       var authorNodes = doc.getElementsByTagName("author");
@@ -136,6 +196,7 @@ function buildCitationsFromPasta(pastaDocs) {
       } catch (error) {
          date = "";
       }
+      var portalLink = portal_base + doc.getElementsByTagName("packageid")[0].childNodes[0].nodeValue;
       var link = "";
       try {
          var doi = doc.getElementsByTagName("doi")[0].childNodes[0].nodeValue;
@@ -144,11 +205,15 @@ function buildCitationsFromPasta(pastaDocs) {
          }
          link = "http://dx.doi.org/" + doi;
       } catch (err) {
-         link = ("https://portal.edirepository.org/nis/mapbrowse?packageid=" +
-            doc.getElementsByTagName("packageid")[0].childNodes[0].nodeValue);
+         //link = ("https://portal.edirepository.org/nis/mapbrowse?packageid=" +
+         //   doc.getElementsByTagName("packageid")[0].childNodes[0].nodeValue);
+         link = "";
       }
-      var title = '<a rel="external noopener" href="' + link + '" target="_blank" aria-label="open data in new tab">' +
-         doc.getElementsByTagName("title")[0].childNodes[0].nodeValue.trim() + '</a>';
+      
+     //var title = '<a rel="external noopener" href="' + link + '" target="_blank" aria-label="open data in new tab">' +
+     //doc.getElementsByTagName("title")[0].childNodes[0].nodeValue.trim() + '</a>';
+      var titleText = doc.getElementsByTagName("title")[0].childNodes[0].nodeValue.trim();
+      var title = makeDatasetLinkHtml(portalLink, doiLink, titleText);      
       var row = '<p><span class="dataset-title">' + title +
          '</span><br><span class="dataset-author">' + names + date +
          '</span></p>';
@@ -479,7 +544,7 @@ window.onload = function () {
             return '"' + text + '"';
       }
 
-      var base = PASTA_CONFIG["server"];
+      var base = PASTA_CONFIG["server"]; // ends with "key=" so the decoded key can be appended directly
       var fields = ["title",
          "pubdate",
          "doi",
@@ -501,7 +566,8 @@ window.onload = function () {
       if (geo) query += "+AND+geographicdescription:" + addQuotes(geo);
       var dateQuery = makeDateQuery(sYear, eYear, datayear, pubyear);
       var sort = makeSortParam(sortBy);
-      var url = base + encodeURI(params + query + dateQuery + sort);
+      //var url = base + encodeURI(params + query + dateQuery + sort);
+      var url = base + encodeURIComponent(getApiKey()) + "&" + encodeURI(params + query + dateQuery + sort);
       return url;
    }
 
